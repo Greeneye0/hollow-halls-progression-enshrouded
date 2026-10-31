@@ -138,3 +138,18 @@ for i, (key, name) in enumerate(HALLS):
     d.text((x + (cw - d.textlength(name, font=f)) / 2, y + ch + 22), name, font=f, fill=HOT + (255,))
 wordmark(grid, None, 30, size=44, sub='a loading screen for each of the six Hollow Halls')
 save(grid, 'six-halls.jpg')
+
+# 5. The mod card's preview (shown about 176 px wide): one hall picture and a title big enough to read there.
+card = grade(cover(Image.open(os.path.join(LOADING, 'veilwater.jpg')), 1920, 1080, 0.55))
+shade = Image.new('RGBA', card.size, (0, 0, 0, 0))
+sd = ImageDraw.Draw(shade)
+for y in range(560):  # dark at the top, where the title sits, fading out
+    sd.line((0, y, 1920, y), fill=(8, 6, 4, int(200 * (1 - y / 560) ** 1.4)))
+card = Image.alpha_composite(card, shade)
+d = ImageDraw.Draw(card)
+for text, size, y, colour in (('HOLLOW HALLS', 190, 40, HOT), ('PROGRESSION', 150, 250, HOT), ('Return Beacon travel', 80, 430, TXT)):
+    f = font(True, size)
+    x = (1920 - d.textlength(text, font=f)) / 2
+    d.text((x + 6, y + 6), text, font=f, fill=(0, 0, 0, 200))
+    d.text((x, y), text, font=f, fill=colour + (255,))
+save(card, 'card.jpg')
