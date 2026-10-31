@@ -1,0 +1,114 @@
+[center][size=6][b]HOLLOW HALLS PROGRESSION[/b][/size]
+[size=4][color=#e8c882]R E T U R N   B E A C O N   T R A V E L[/color][/size]
+
+[size=3]The Hollow Halls, one beacon at a time.[/size][/center]
+
+[center][img]UPLOAD:map-menu.jpg[/img][/center]
+
+[line]
+
+[size=4][b]What it does[/b][/size]
+
+The Hollow Halls are long, and leaving one halfway means starting over. This mod remembers every [b]Return Beacon[/b] you reach inside them, so you can stop whenever you like and pick up where you left off.
+[list]
+[*][b]Reach a Return Beacon[/b] in any of the six Hollow Halls: a notice tells you it's saved ("Return Beacon 2 of 5 reached").
+[*][b]Click that Hollow Halls on the world map.[/b] Under Send Ping and Set as Waypoint there is a button for each Return Beacon you reached.
+[*][b]Pick one:[/b] a loading screen with a picture of that hall shows while the area loads, and you arrive next to the beacon.
+[*][b]Your choice on the server:[/b] beacons stay unlocked for good (default), or a hall's beacons reset once you finish it.
+[*][b]In your language:[/b] the notices and the loading screen follow the game's language setting, in all 15 languages Enshrouded supports.
+[/list]
+
+[center][img]UPLOAD:loading-screen.jpg[/img]
+
+[img]UPLOAD:six-halls.jpg[/img][/center]
+
+[line]
+
+[size=4][b]Installation[/b][/size]
+
+[list=1]
+[*]Close Enshrouded.
+[*]Open the game folder (Steam: right-click Enshrouded > Manage > Browse local files).
+[*]Copy everything from the zip into it, keeping the folders: [b]dbgcore.dll[/b] next to [i]enshrouded.exe[/i], and the [b]greeneye\hollow-halls-progression[/b] folder.
+[*]Start the game and walk up to a Return Beacon in a Hollow Halls.
+[/list]
+
+[b]Single player and hosting your own game:[/b] that's all. Your game is the host.
+
+[b]Install by hand:[/b] Vortex does not know the Greeneye Loader yet.
+
+[b]Uninstall:[/b] delete [i]greeneye\hollow-halls-progression[/i]; if no other Greeneye mod is left, also [i]dbgcore.dll[/i] and the [i]greeneye[/i] folder.
+
+[line]
+
+[size=4][b]Dedicated server[/b][/size]
+
+On a dedicated server the mod has to be on the server [b]and[/b] on the game of every player who wants beacon travel. The server keeps everyone's beacons.
+[list=1]
+[*]Stop the server.
+[*]Open the server folder, the one with [i]enshrouded_server.exe[/i]. In Steam: Library > Tools > Enshrouded Dedicated Server > right-click > Manage > Browse local files. With SteamCMD it's the folder you installed to; with a rented server, use the host's file manager or FTP.
+[*]Copy everything from the zip into that folder, the same way as for the game: [b]dbgcore.dll[/b] next to [i]enshrouded_server.exe[/i], and the [b]greeneye\hollow-halls-progression[/b] folder.
+[*]Start the server.
+[*]Check it loaded: [i]greeneye\loader.log[/i] in the server folder should contain [i]Hollow Halls Progression 1.0.0: server companion loaded[/i].
+[/list]
+
+[b]Players:[/b] each player installs the mod on their own game as described above. Players without the mod can still join and play; they just don't get beacon travel.
+
+[b]Rented servers:[/b] the host must let you add files next to [i]enshrouded_server.exe[/i]. Tested on a Windows server; not tested on Linux/Wine hosting.
+
+[line]
+
+[size=4][b]Settings[/b][/size]
+
+[i]greeneye\hollow-halls-progression\hollow-halls-progression.ini[/i], each setting explained in the file. Restart the game (or the server) after changing it.
+[list]
+[*][b]ResetOnBossKill[/b] (host setting): [i]false[/i] keeps Return Beacons unlocked for good (default). [i]true[/i] resets a player's beacons in a hall once they finish it: when one of the hall's end chests (the warrior, ranger and mage gear at the end) is looted while they are inside.
+[*][b]ShowNotices[/b] and [b]Language[/b] (each player's own): whether notices are shown, and in which language.
+[/list]
+
+The host (the dedicated server, or your game when you play alone or host) keeps each player's beacons in [i]progress.txt[/i] in the same folder.
+
+[line]
+
+[size=4][b]Languages[/b][/size]
+
+The notices and the loading screen come in every language the game supports: English, French, Italian, German, Spanish, Japanese, Korean, Polish, Portuguese (Brazil), Russian, Simplified Chinese, Traditional Chinese, Turkish, Ukrainian and Thai. They follow the language set in the game. The beacon buttons use the game's own word for Return Beacon.
+
+The translations were made with AI. If a line reads oddly in your language, please post a better one in the comments.
+
+[line]
+
+[size=4][b]Compatibility[/b][/size]
+
+[list]
+[*][b]Single player, hosting your own game, and dedicated servers[/b] (install it on the server too). Players without the mod can share the server and notice nothing.
+[*]On a server without the mod, beacons aren't saved and the map shows no beacon buttons; nothing shows up in chat. Servers with text chat turned off work too.
+[*]Progress is kept per player (Steam account) on the host. A host that runs several worlds shares one list across them.
+[*][b]Plays well with other mods.[/b] It runs through the Greeneye Loader ([i]dbgcore.dll[/i], shared with Find, Quick Deposit, Embervale Teleport, Town Portals and The Worst Map Mod), and chains onto hooks other mods put on the same game functions.
+[*][b]Safe on game updates.[/b] Made for the current game version. After an update the mod checks that it still recognises the game; if it does not, it switches the affected parts off instead of risking a crash.
+[*]Works with Steam. Not tested with other store versions.
+[/list]
+
+[line]
+
+[size=4][b]Troubleshooting[/b][/size]
+
+If something doesn't work, please post these with your report:
+[list]
+[*][i]greeneye\loader.log[/i] in the game folder: what the Greeneye Loader and the mod did (the mod's lines start with "Hollow Halls Progression:").
+[*]On a dedicated server, also [i]greeneye\loader.log[/i] from the server folder.
+[*]If beacons go missing: [i]greeneye\hollow-halls-progression\progress.txt[/i] from the host (the server, or the game that hosts).
+[/list]
+
+[line]
+
+[size=4][b]Changelog[/b][/size]
+
+[b]1.0.0[/b]
+[list]
+[*]First release.
+[/list]
+
+[line]
+
+[size=2]Open source (MIT): [url=https://github.com/Greeneye0/hollow-halls-progression-enshrouded]github.com/Greeneye0/hollow-halls-progression-enshrouded[/url]. Made with the help of AI. The loading screen pictures are in-game screenshots; Enshrouded and its assets belong to Keen Games.[/size]

@@ -1,0 +1,18 @@
+# build output
+build/
+bin/
+*.obj
+*.pdb
+*.exp
+*.lib
+*.ilk
+__pycache__/
+
+# release archives are attached to GitHub releases / Nexus, not committed
+dist/*.zip
+build-dev/
+bin-dev/
+
+# raw captures (5120x1440 screenshots); the shipped pictures are loading/*.jpg
+assets/shots/
+dist/nexus/raw/

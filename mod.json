@@ -1,0 +1,10 @@
+{
+  "id": "hollow-halls-progression",
+  "name": "Hollow Halls Progression",
+  "version": "1.0.0",
+  "dll": "hollow-halls-progression.dll",
+  "side": "both",
+  "api": 2,
+  "description": "Remembers the Return Beacons you reach in the Hollow Halls; click a Hollow Halls on the world map to travel back to one.",
+  "author": "GreeneyeDS"
+}

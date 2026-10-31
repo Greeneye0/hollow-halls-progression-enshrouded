@@ -1,0 +1,1 @@
+Saves every Return Beacon you reach in the Hollow Halls. Click a Hollow Halls on the world map to travel back to any of them, with a loading screen for each hall. Single player, hosted games and dedicated servers.
