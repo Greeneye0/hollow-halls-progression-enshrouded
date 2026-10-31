@@ -49,7 +49,7 @@ On a dedicated server the mod has to be on the server [b]and[/b] on the game of 
 [*]Open the server folder, the one with [i]enshrouded_server.exe[/i]. In Steam: Library > Tools > Enshrouded Dedicated Server > right-click > Manage > Browse local files. With SteamCMD it's the folder you installed to; with a rented server, use the host's file manager or FTP.
 [*]Copy everything from the zip into that folder, the same way as for the game: [b]dbgcore.dll[/b] next to [i]enshrouded_server.exe[/i], and the [b]greeneye\hollow-halls-progression[/b] folder.
 [*]Start the server.
-[*]Check it loaded: [i]greeneye\loader.log[/i] in the server folder should contain [i]Hollow Halls Progression 1.0.0: server companion loaded[/i].
+[*]Check it loaded: [i]greeneye\loader.log[/i] in the server folder should contain [i]Hollow Halls Progression 1.0.1: server companion loaded[/i].
 [/list]
 
 [b]Players:[/b] each player installs the mod on their own game as described above. Players without the mod can still join and play; they just don't get beacon travel.
@@ -103,6 +103,12 @@ If something doesn't work, please post these with your report:
 [line]
 
 [size=4][b]Changelog[/b][/size]
+
+[b]1.0.1[/b]
+[list]
+[*]Fixed: beacons could stop saving partway through a hall (only 2 of 5 in Revelwood). The mod sometimes thought an end chest was looted when it wasn't, and stopped saving beacons for the rest of the visit. Now only looting an end chest while standing at it counts, and with the default settings finishing a hall never stops beacons from saving. Beacons you already have are kept; walk past the missing ones again. Thanks [b]HadToRegister[/b] and [b]sacredwitness[/b] for the report and the log.
+[*]Fixed: with ResetOnBossKill=true, travelling to a beacon could reset that hall's beacons.
+[/list]
 
 [b]1.0.0[/b]
 [list]

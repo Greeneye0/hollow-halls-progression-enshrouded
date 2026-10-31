@@ -21,7 +21,7 @@ using namespace hhp;
 template <class T>
 T& at(void* p, size_t n) { return *reinterpret_cast<T*>(static_cast<uint8_t*>(p) + n); }
 
-constexpr const char* kVersion = "1.0.0";
+constexpr const char* kVersion = "1.0.1";
 // The game's "Return Beacon" (its name in the game's text tables).
 constexpr uint32_t kReturnBeaconLoca = 2316234444u;
 

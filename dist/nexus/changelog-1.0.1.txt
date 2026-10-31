@@ -1,0 +1,2 @@
+Fixed: beacons could stop saving partway through a hall (only 2 of 5 in Revelwood). The mod sometimes thought an end chest was looted when it wasn't, and stopped saving beacons for the rest of the visit. Now only looting an end chest while standing at it counts, and with the default settings finishing a hall never stops beacons from saving. Thanks HadToRegister and sacredwitness for the report and the log.
+Fixed: with ResetOnBossKill=true, travelling to a beacon could reset that hall's beacons.

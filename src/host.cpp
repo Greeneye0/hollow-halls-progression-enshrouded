@@ -108,7 +108,7 @@ struct Local {
 
 struct Player {
     float x{}, y{}, z{};
-    uint64_t seen{}, checked{};
+    uint64_t seen{}, checked{}, travelled{};
     int hall = -1;        // the hall the player was in at the last check
     bool finished{};      // this visit's hall was finished (no unlocks until outside)
 };
@@ -214,7 +214,10 @@ void Check(uint32_t id, Player& p, uint64_t now) {
 // bool isEmpty} reads 01 00 while a chest has loot and 01 01 once it is emptied. Every 2-byte
 // component of an entity at an end chest's place that reads 01 00 is watched; one that turns 01 01
 // finishes the hall for every player in it. A chest first seen empty (looted on an earlier visit)
-// does not count.
+// does not count, nor does a change between two reads far apart: the scan pauses while nobody is in
+// the hall, and a player arriving later (by beacon travel) must not finish it on the old reading.
+// A chest being unloaded (its player gone) can read 01 01 for a moment too, so a change only counts
+// while a player stands at that chest and has not just travelled away.
 constexpr int kTypeBits = 640;
 const uint8_t* Component(uint8_t* rec, int type, uint16_t* size) {
     uint8_t* arch = *reinterpret_cast<uint8_t**>(rec + 0x18);
@@ -249,7 +252,11 @@ struct Chests {
     void* registry{};
     int positionType{};
     uint64_t scanAt{};
-    std::unordered_map<uint64_t, uint8_t> watched; // (entity << 16 | type) -> isEmpty last read
+    struct Read {
+        uint8_t empty;
+        uint64_t at;
+    };
+    std::unordered_map<uint64_t, Read> watched; // (entity << 16 | type) -> isEmpty last read, and when
 } g_chests;
 
 // The position type: the 0x38-byte type most entities have with a world position in it.
@@ -272,8 +279,18 @@ int FindPositionType(uint8_t* reg) {
     return counts[best] >= 100 ? best : 0;
 }
 
+// A player of the hall within looting reach of a chest at p, who did not just travel. Caller holds g_lock.
+bool PlayerAtChest(int hall, const float p[3], uint64_t now) {
+    const halls::Point at{p[0], p[1], p[2]};
+    for (uint32_t id = 1; id <= 16; ++id) {
+        const auto& q = g_players[id];
+        if (q.hall == hall && now - q.seen < 1500 && now - q.travelled > 5000 && Distance(q.x, q.y, q.z, at) <= 6.0f) return true;
+    }
+    return false;
+}
+
 // The halls finished since the last scan (bit per hall). Caller holds g_lock.
-uint32_t ScanChests(uint8_t* reg, uint32_t occupied) {
+uint32_t ScanChests(uint8_t* reg, uint32_t occupied, uint64_t now) {
     if (reg != g_chests.registry) {
         g_chests.registry = reg;
         g_chests.positionType = 0;
@@ -301,11 +318,11 @@ uint32_t ScanChests(uint8_t* reg, uint32_t occupied) {
             const uint64_t key = uint64_t(id) << 16 | uint64_t(t);
             auto it = g_chests.watched.find(key);
             if (it == g_chests.watched.end()) {
-                g_chests.watched.emplace(key, c[1]);
+                g_chests.watched.emplace(key, Chests::Read{c[1], now});
                 continue;
             }
-            if (it->second == 0 && c[1] == 1) finished |= 1u << hall;
-            it->second = c[1];
+            if (it->second.empty == 0 && c[1] == 1 && now - it->second.at < 2500 && PlayerAtChest(hall, p, now)) finished |= 1u << hall;
+            it->second = {c[1], now};
         }
     });
     static size_t logged = 0;
@@ -330,14 +347,14 @@ void WatchChests(void* ctx) {
     for (const auto& p : g_players)
         if (p.hall >= 0 && now - p.seen < 3000) occupied |= 1u << p.hall;
     if (!occupied) return;
-    const uint32_t finished = ScanChests(static_cast<uint8_t*>(Storage(ctx)), occupied);
+    const uint32_t finished = ScanChests(static_cast<uint8_t*>(Storage(ctx)), occupied, now);
     for (int h = 0; finished && h < halls::kHallCount; ++h) {
         if (!(finished >> h & 1)) continue;
         const bool resetOn = progress::Current().resetOnBoss;
         for (uint32_t id = 1; id <= 16; ++id) {
             auto& p = g_players[id];
             if (p.hall != h || p.finished || now - p.seen >= 3000) continue;
-            p.finished = true;
+            p.finished = resetOn; // without the reset, beacons of a finished hall still unlock
             const uint64_t account = AccountOf(id);
             const bool reset = resetOn && account && progress::ResetHall(account, h);
             char line[192];
@@ -613,6 +630,7 @@ bool ApplyTick(void* ctx, void* descriptors) {
         at<uint8_t>(component, 0x49) = 0;
         t_applied = {id, r.nonce};
         r.stage = Stage::applying;
+        if (id < 17) g_players[id].travelled = now;
         char line[160];
         std::snprintf(line, sizeof(line), "Hollow Halls Progression: applying %.1f, %.1f, %.1f (terrain waited %llu ms)", x,
                       double(r.target[1]) / kFixed, z, static_cast<unsigned long long>(now - r.terrainSince));
