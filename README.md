@@ -9,7 +9,7 @@ The Hollow Halls are long. This mod remembers every Return Beacon you reach insi
 - Single player, self-hosted and dedicated servers (the server needs the mod too; it keeps everyone's progress).
 - Notices and the loading screen in all 15 languages the game supports, following the game's language setting. The texts are in `src/strings.h`.
 
-Download and install instructions: see the Nexus Mods page. The player-facing readme is [dist/README.txt](dist/README.txt).
+Download and install instructions: see the [Nexus Mods page](https://www.nexusmods.com/enshrouded/mods/272). The player-facing readme is [dist/README.txt](dist/README.txt).
 
 ## Settings
 
