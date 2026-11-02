@@ -1,4 +1,4 @@
-Hollow Halls Progression 1.0.1 for Enshrouded
+Hollow Halls Progression 1.0.2 for Enshrouded
 ==============================================
 
 The Hollow Halls are long. This mod remembers every Return Beacon you reach inside them, so you
@@ -31,7 +31,7 @@ The mod has to be on the server AND on the game of every player who wants beacon
    the same way: dbgcore.dll next to enshrouded_server.exe, and the
    greeneye\hollow-halls-progression folder.
 3. Start the server. greeneye\loader.log in the server folder should contain
-   "Hollow Halls Progression 1.0.1: server companion loaded".
+   "Hollow Halls Progression 1.0.2: server companion loaded".
 Players without the mod can still join; they just don't get beacon travel.
 
 Settings

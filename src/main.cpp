@@ -12,6 +12,7 @@
 #include "greeneye.h"
 #include "halls.h"
 #include "host.h"
+#include "map_link.h"
 #include "notice.h"
 #include "progress.h"
 #include "protocol.h"
@@ -21,7 +22,7 @@ using namespace hhp;
 template <class T>
 T& at(void* p, size_t n) { return *reinterpret_cast<T*>(static_cast<uint8_t*>(p) + n); }
 
-constexpr const char* kVersion = "1.0.1";
+constexpr const char* kVersion = "1.0.2";
 // The game's "Return Beacon" (its name in the game's text tables).
 constexpr uint32_t kReturnBeaconLoca = 2316234444u;
 
@@ -47,15 +48,15 @@ void Log(const char* s) { greeneye::Host()->log(s); }
 // UI snapshots and the live game client are distinct objects. The command loop's live client
 // holds the world (+0x47d4e0), the player handle and the chat command dispatch.
 void* GameClient(void* app) {
-    auto ui = app ? at<void*>(app, 0x35280) : nullptr;
+    auto ui = app ? at<void*>(app, 0x352a0) : nullptr;
     return ui ? at<void*>(ui, 0x1b8) : nullptr;
 }
-// The local player: the client world's player position (+0x2c08, 32.32 fixed point) and its handle
+// The local player: the client world's player position (+0x2c18, 32.32 fixed point) and its handle
 // (client + 0x466b44; entity id = (handle & 0x3f) + 1), as in Quick Deposit.
 bool LocalPosition(uint8_t* world, float& x, float& y, float& z) {
-    x = float(double(at<int64_t>(world, 0x2c08)) / 4294967296.0);
-    y = float(double(at<int64_t>(world, 0x2c10)) / 4294967296.0);
-    z = float(double(at<int64_t>(world, 0x2c18)) / 4294967296.0);
+    x = float(double(at<int64_t>(world, 0x2c18)) / 4294967296.0);
+    y = float(double(at<int64_t>(world, 0x2c20)) / 4294967296.0);
+    z = float(double(at<int64_t>(world, 0x2c28)) / 4294967296.0);
     return x > 1.0f && x < 12000.0f && z > 1.0f && z < 12000.0f && std::isfinite(y);
 }
 uint32_t LocalEntity(void* client) {
@@ -172,6 +173,7 @@ void Accept(const protocol::Masks& now) {
     }
     known.masks = now;
     known.have = true;
+    map_link::Publish(now.hall, halls::kHallCount, true); // the world map mod's beacon numbers
 }
 
 std::atomic<int> clickedHall{-1}, clickedBeacon{-1};
@@ -322,6 +324,7 @@ void ClientFrame(void* app) {
         link = {};
         hostAnswered = false;
         known = {};
+        map_link::Publish(known.masks.hall, halls::kHallCount, false);
         pending = {};
         clickedHall = -1;
         lastWorld = world;
@@ -395,6 +398,10 @@ void ClientFrame(void* app) {
     }
     const int h = clickedHall.exchange(-1);
     if (h >= 0) Travel(client, h, clickedBeacon.load());
+    // A beacon clicked on the world map mod's dungeon map (only one it showed as reached)
+    int mapHall = -1, mapBeacon = -1;
+    if (map_link::TakeRequest(mapHall, mapBeacon) && mapHall < halls::kHallCount && mapBeacon < halls::kHalls[mapHall].count)
+        Travel(client, mapHall, mapBeacon);
 }
 
 void SafeClient(void* app) {
@@ -546,6 +553,28 @@ bool CallTo(const GreeneyeHost* host, uint8_t* site, uint8_t* target) {
     return bytes[0] == 0xe8 && site + 5 + rel == target;
 }
 
+// addEntry (push onto a 16-entry list) has a byte-identical twin elsewhere in the game since
+// build 26320373, so it is taken from the call the map's own menu builder makes (+0x10c).
+uint8_t* FindAddEntry(const GreeneyeHost* host, uint8_t* build) {
+    static const uint8_t kHead[] = {0x48, 0x83, 0xEC, 0x28, 0x0F, 0xB6, 0x81, 0x80, 0x04, 0x00, 0x00, 0x4C, 0x8B, 0xC1};
+    auto* image = reinterpret_cast<uint8_t*>(GetModuleHandleW(nullptr));
+    auto* nt = reinterpret_cast<IMAGE_NT_HEADERS64*>(image + reinterpret_cast<IMAGE_DOS_HEADER*>(image)->e_lfanew);
+    uint8_t* end = image + nt->OptionalHeader.SizeOfImage;
+    for (size_t i = 0; build && i < 0x400; ++i) {
+        uint8_t bytes[5]{};
+        host->read(build + i, bytes, 5);
+        if (bytes[0] != 0xe8) continue;
+        int32_t rel = 0;
+        std::memcpy(&rel, bytes + 1, 4);
+        uint8_t* target = build + i + 5 + rel;
+        if (target < image || target + sizeof(kHead) > end) continue;
+        uint8_t head[sizeof(kHead)]{};
+        host->read(target, head, sizeof(head));
+        if (!std::memcmp(head, kHead, sizeof(kHead))) return target;
+    }
+    return nullptr;
+}
+
 bool Prepare() {
     paused = true;
     if (!host::Prepare()) {
@@ -555,12 +584,14 @@ bool Prepare() {
     progress::Save();
     notice::Clear();
     notice::StopLoading();
+    map_link::Withdraw(); // the map mod offers no journeys while this generation is gone
     return true;
 }
 bool Ready() { return true; }
 void Resume() {
     paused = false;
     host::Resume();
+    map_link::Publish(known.masks.hall, halls::kHallCount, known.have);
 }
 }  // namespace
 
@@ -580,14 +611,14 @@ GREENEYE_MOD_START {
         return true;
     }
     auto mapTail = host->find("48 8D AC 24 A0 F8 FF FF 48 81 EC 60 08 00 00 48 8B 05", nullptr);
-    auto loop = host->find("40 53 55 56 57 41 54 41 55 41 56 41 57 48 81 EC 98 00 00 00 48 8D 81 58 4F 03 00", nullptr);
+    auto loop = host->find("40 53 55 56 57 41 54 41 55 41 56 41 57 48 81 EC 98 00 00 00 48 8D 81 78 4F 03 00", nullptr);
     auto send = host->find("4C 8B DC 55 56 57 49 8D AB 18 FF FF FF", nullptr);
     auto play = host->find("4C 8B DC 55 49 8D AB E8 FD FF FF 48 81 EC 10 03 00 00", nullptr);
     auto build = host->find("48 89 5C 24 10 48 89 6C 24 20 56 57 41 57", nullptr);
     auto button = host->find("40 55 53 57 48 8D AC 24 C0 FD FF FF", nullptr);
     auto buttons = host->find("48 8B C4 57 48 81 EC A0 00 00 00 48 8B 91 B0 00 00 00", nullptr);
     makeEntry = reinterpret_cast<EntryFn>(host->find("40 53 48 83 EC 40 45 33 D2 66 C7 01 5B 00", nullptr));
-    addEntry = reinterpret_cast<AddFn>(host->find("48 83 EC 28 0F B6 81 80 04 00 00 4C 8B C1", nullptr));
+    addEntry = reinterpret_cast<AddFn>(FindAddEntry(host, build));
     if (!mapTail || !loop || !send || !play || !build || !button || !buttons || !makeEntry || !addEntry) {
         Log("Hollow Halls Progression: unsupported game signatures; no map menu");
         return false;

@@ -7,8 +7,8 @@
 // "is admin" check (the same function for both) says yes. While greeneye\hollow-halls-progression\
 // admin.enable exists on the server, these two calls answer yes; the third caller (spawning and the
 // other admin commands) is left alone. Same evidence as QuickDeposit dev/admin_ops.cpp, whose
-// client-side sites are exe+0x49a19a and exe+0x2cb0f8; on the server build 0x6ad77f14 they are
-// +0x233dea and +0xb83e8.
+// client-side sites are exe+0x4a11aa and exe+0x2d0158 (build 26320373); on the server build
+// 0x6ae46022 (26319703) they are +0x23967a and +0xbc1d8.
 #include "greeneye.h"
 #include <cstdint>
 #include <string>

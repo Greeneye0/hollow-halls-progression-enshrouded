@@ -53,7 +53,7 @@ void Fill(Box& box,uint32_t color) {
 }
 void Line(const std::string& value,void* assets,uint32_t color,uint64_t visible=~uint64_t(0)) {
     auto text=MakeText(value.c_str());alignas(16) uint8_t buffer[0x400]{};
-    label(buffer,&text,static_cast<uint8_t*>(assets)+0x10a0c,0);
+    label(buffer,&text,static_cast<uint8_t*>(assets)+0x10bbc,0);
     buffer[0x3d]=1;at<uint32_t>(buffer,0xb0)=color;at<float>(buffer,0xb4)=1;
     // Native EndLabel uses +0xa0 as its visible-glyph limit (normally -1).
     // Shape and measure the complete line once, then reveal glyphs without
@@ -195,10 +195,10 @@ void DrawLoadingText(void* assets,float x,float y,float w,float h,uint64_t now,f
     std::string caption;{std::lock_guard guard(mutex);caption=loadingCaption;}
     // The game's outlined text for the caption, used in place: a style holds self-relative offsets
     // (its font name), so a copy elsewhere points the game's text code at garbage.
-    const auto* style=static_cast<uint8_t*>(assets)+0x10a0c+0x58;
+    const auto* style=static_cast<uint8_t*>(assets)+0x10bbc+0x58;
     if(!caption.empty())Centred(x,y+h-170,w,60,caption,style,Fade(0xffe8e2d8u,alpha));
     char percent[96];sprintf_s(percent,text::Get(Language(),text::LoadingPercent),int(shownProgress*100.f+.5f));
-    Centred(x,y+h-100,w,40,percent,static_cast<uint8_t*>(assets)+0x10a0c,Fade(0xffc8c0b4u,alpha*alpha));
+    Centred(x,y+h-100,w,40,percent,static_cast<uint8_t*>(assets)+0x10bbc,Fade(0xffc8c0b4u,alpha*alpha));
 }
 }
 bool Init(const GreeneyeHost* host,void** uiRoot) {

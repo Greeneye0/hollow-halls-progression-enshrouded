@@ -49,7 +49,7 @@ On a dedicated server the mod has to be on the server [b]and[/b] on the game of 
 [*]Open the server folder, the one with [i]enshrouded_server.exe[/i]. In Steam: Library > Tools > Enshrouded Dedicated Server > right-click > Manage > Browse local files. With SteamCMD it's the folder you installed to; with a rented server, use the host's file manager or FTP.
 [*]Copy everything from the zip into that folder, the same way as for the game: [b]dbgcore.dll[/b] next to [i]enshrouded_server.exe[/i], and the [b]greeneye\hollow-halls-progression[/b] folder.
 [*]Start the server.
-[*]Check it loaded: [i]greeneye\loader.log[/i] in the server folder should contain [i]Hollow Halls Progression 1.0.1: server companion loaded[/i].
+[*]Check it loaded: [i]greeneye\loader.log[/i] in the server folder should contain [i]Hollow Halls Progression 1.0.2: server companion loaded[/i].
 [/list]
 
 [b]Players:[/b] each player installs the mod on their own game as described above. Players without the mod can still join and play; they just don't get beacon travel.
@@ -85,6 +85,7 @@ The translations were made with AI. If a line reads oddly in your language, plea
 [*]On a server without the mod, beacons aren't saved and the map shows no beacon buttons; nothing shows up in chat. Servers with text chat turned off work too.
 [*]Progress is kept per player (Steam account) on the host. A host that runs several worlds shares one list across them.
 [*][b]Plays well with other mods.[/b] It runs through the Greeneye Loader ([i]dbgcore.dll[/i], shared with Find, Quick Deposit, Embervale Teleport, Town Portals and The Worst Map Mod), and chains onto hooks other mods put on the same game functions.
+[*][b]The Worst Map Mod[/b] (1.3.27 or newer): the Return Beacons you reached are lit up on its Hollow Halls dungeon maps, and a click on one travels there.
 [*][b]Safe on game updates.[/b] Made for the current game version. After an update the mod checks that it still recognises the game; if it does not, it switches the affected parts off instead of risking a crash.
 [*]Works with Steam. Not tested with other store versions.
 [/list]
@@ -103,6 +104,12 @@ If something doesn't work, please post these with your report:
 [line]
 
 [size=4][b]Changelog[/b][/size]
+
+[b]1.0.2[/b]
+[list]
+[*]Updated for the 2 November 2026 game patch (game build 1283531). After the patch 1.0.1 switched itself off ([i]host signatures not found; disabled[/i] in [i]greeneye\loader.log[/i]): beacons were not saved and the map showed no beacon buttons. On a dedicated server, update the server's copy too.
+[*]New: with [b]The Worst Map Mod[/b] (1.3.27 or newer), the Return Beacons you reached are lit up on its Hollow Halls dungeon maps; click one to travel there.
+[/list]
 
 [b]1.0.1[/b]
 [list]
