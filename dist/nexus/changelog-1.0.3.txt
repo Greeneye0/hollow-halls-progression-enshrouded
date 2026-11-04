@@ -1,0 +1,2 @@
+- Language: a Russian game can no longer get Ukrainian text, and Portuguese is recognised in every form.
+- Greeneye Loader 1.2.2: logs are written in the background, so a slow drive can't stall the game through them. This may help the freezes HadToRegister reported.
