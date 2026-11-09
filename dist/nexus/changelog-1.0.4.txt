@@ -1,0 +1,2 @@
+- Fixed: "Return Beacon reached" notices could keep coming back for beacons you already had, when playing alone or hosting (most often after pausing). Thanks mikebishop for the report.
+- Fixed: when playing alone or hosting, a reached beacon could be saved but not show on the map. Those beacons now show.

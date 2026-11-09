@@ -51,7 +51,7 @@ On a dedicated server the mod has to be on the server [b]and[/b] on the game of 
 [*]Open the server folder, the one with [i]enshrouded_server.exe[/i]. In Steam: Library > Tools > Enshrouded Dedicated Server > right-click > Manage > Browse local files. With SteamCMD it's the folder you installed to; with a rented server, use the host's file manager or FTP.
 [*]Copy everything from the zip into that folder, the same way as for the game: [b]dbgcore.dll[/b] next to [i]enshrouded_server.exe[/i], and the [b]greeneye\hollow-halls-progression[/b] folder.
 [*]Start the server.
-[*]Check it loaded: [i]greeneye\loader.log[/i] in the server folder should contain [i]Hollow Halls Progression 1.0.3: server companion loaded[/i].
+[*]Check it loaded: [i]greeneye\loader.log[/i] in the server folder should contain [i]Hollow Halls Progression 1.0.4: server companion loaded[/i].
 [/list]
 
 [b]Players:[/b] each player installs the mod on their own game as described above. Players without the mod can still join and play; they just don't get beacon travel.
@@ -106,6 +106,12 @@ If something doesn't work, please post these with your report:
 [line]
 
 [size=4][b]Changelog[/b][/size]
+
+[b]1.0.4[/b]
+[list]
+[*]Fixed: "Return Beacon reached" notices could keep coming back for beacons you already had, when playing alone or hosting (most often after pausing). Thanks [b]mikebishop[/b] for the report.
+[*]Fixed: when playing alone or hosting, a reached beacon could be saved but not show on the map. Those beacons now show.
+[/list]
 
 [b]1.0.3[/b]
 [list]

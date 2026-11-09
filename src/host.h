@@ -22,6 +22,7 @@ using AnswerHandler = void (*)(std::string_view line);
 void OnAnswer(AnswerHandler handler);
 
 // The local player's beacons and travel while this process hosts the world.
+uint64_t LocalAccount(); // the server account of this game's own player, 0 until known
 protocol::Masks LocalMasks();
 protocol::Answer TravelLocal(int hall, int beacon);
 

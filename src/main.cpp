@@ -22,7 +22,7 @@ using namespace hhp;
 template <class T>
 T& at(void* p, size_t n) { return *reinterpret_cast<T*>(static_cast<uint8_t*>(p) + n); }
 
-constexpr const char* kVersion = "1.0.3";
+constexpr const char* kVersion = "1.0.4";
 // The game's "Return Beacon" (its name in the game's text tables).
 constexpr uint32_t kReturnBeaconLoca = 2316234444u;
 
@@ -95,11 +95,25 @@ struct Link {
     bool absent{};
 } link;
 std::atomic<bool> hostAnswered{false};
+enum class Source { none, local, remote };
 struct Known {
     protocol::Masks masks{};
     bool have{};
+    Source source{};
     uint64_t askAt{};
 } known;
+uint64_t hostedAt = 0;
+
+// This game hosts the world (single player, hosting), or did moments ago: the host's player system
+// stops while the game pauses (menus, loading), and the chat path must not take over meanwhile. It
+// answers from the host's record of this player's account, which can differ from the local player's.
+bool Hosting(uint64_t now) {
+    if (host::HostsWorld()) {
+        hostedAt = now;
+        return true;
+    }
+    return hostedAt && now - hostedAt < 30000;
+}
 struct Pending {
     uint64_t nonce{}, until{};
     int hall{}, beacon{};
@@ -123,7 +137,7 @@ void OnHostAnswer(std::string_view line) {
 }
 
 HostMod CheckHost(void* client, void* world) {
-    if (host::HostsWorld() || hostAnswered) return HostMod::present;
+    if (Hosting(GetTickCount64()) || hostAnswered) return HostMod::present;
     const auto now = GetTickCount64();
     if (link.client != client || link.world != world || !link.deadline) link = {client, world, now + 3000, now + 15000};
     // Ask twice (3 s and 9 s after joining), in case the first hello is lost while the world loads.
@@ -153,10 +167,10 @@ int Count(uint8_t mask) {
     return n;
 }
 
-// New beacons and resets since the last answer, as notices. The first answer in a world only sets
-// what is known.
-void Accept(const protocol::Masks& now) {
-    if (known.have) {
+// New beacons and resets since the last answer, as notices. The first answer in a world, or the first
+// from another source, only sets what is known.
+void Accept(const protocol::Masks& now, Source source) {
+    if (known.have && known.source == source) {
         for (int h = 0; h < halls::kHallCount; ++h) {
             const uint8_t was = known.masks.hall[h], is = now.hall[h];
             if (was && !is && now.resetOnBoss) {
@@ -168,11 +182,20 @@ void Accept(const protocol::Masks& now) {
                 char message[512];
                 sprintf_s(message, notice::Say(text::Reached), unsigned(b + 1), unsigned(halls::kHalls[h].count));
                 notice::Show(notice::Say(text::Title), message, 7000);
+                char line[160];
+                sprintf_s(line, "Hollow Halls Progression: notice: Return Beacon %d of %d reached in hall %d", b + 1, int(halls::kHalls[h].count), h);
+                Log(line);
             }
         }
+    } else if (known.have) {
+        char line[200];
+        sprintf_s(line, "Hollow Halls Progression: beacons now %s; no notices for this reading (Springlands %u)",
+                  source == Source::local ? "read from this game's own record" : "asked of the host over chat", unsigned(now.hall[0]));
+        Log(line);
     }
     known.masks = now;
     known.have = true;
+    known.source = source;
     map_link::Publish(now.hall, halls::kHallCount, true); // the world map mod's beacon numbers
 }
 
@@ -280,7 +303,7 @@ void Travel(void* client, int hall, int beacon) {
         notice::Show(notice::Say(text::Title), notice::Say(text::Busy), 3000);
         return;
     }
-    if (host::HostsWorld()) {
+    if (Hosting(now)) {
         const auto answer = host::TravelLocal(hall, beacon);
         if (answer != protocol::Answer::queued) {
             notice::Show(notice::Say(text::Title),
@@ -324,6 +347,7 @@ void ClientFrame(void* app) {
         link = {};
         hostAnswered = false;
         known = {};
+        hostedAt = 0;
         map_link::Publish(known.masks.hall, halls::kHallCount, false);
         pending = {};
         clickedHall = -1;
@@ -364,18 +388,18 @@ void ClientFrame(void* app) {
 #endif
     const auto now = GetTickCount64();
     const int hall = positioned ? HallAt(x, y, z) : -1;
-    if (host::HostsWorld()) {
-        // Hosting (or single player): the record is right here.
-        if (now >= known.askAt) {
+    if (Hosting(now)) {
+        // Hosting (or single player): the record is right here. Paused meanwhile: nothing changes.
+        if (host::HostsWorld() && now >= known.askAt) {
             known.askAt = now + 500;
-            Accept(host::LocalMasks());
+            Accept(host::LocalMasks(), Source::local);
         }
     } else if (CheckHost(client, world) == HostMod::present) {
         if (answerReady.exchange(false)) {
             AcquireSRWLockShared(&answerLock);
             auto m = answeredMasks;
             ReleaseSRWLockShared(&answerLock);
-            Accept(m);
+            Accept(m, Source::remote);
         }
         if (travelAnswered.exchange(false)) {
             AcquireSRWLockShared(&answerLock);
@@ -487,7 +511,7 @@ void AddBeacons(uint8_t* entries, void* marker) {
     if (!entries || !marker || !makeEntry || !addEntry) return;
     const int hall = HallOfMarker(marker);
     if (hall < 0) return;
-    const uint8_t mask = host::HostsWorld() ? host::LocalMasks().hall[hall] : known.masks.hall[hall];
+    const uint8_t mask = Hosting(GetTickCount64()) ? host::LocalMasks().hall[hall] : known.masks.hall[hall];
     if (!mask) return;
     notice::PrepareLoading(hall);  // the picture is ready by the time a beacon is chosen
     // The game's word in the current language, else the mod's own.

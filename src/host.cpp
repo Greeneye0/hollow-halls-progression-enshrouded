@@ -104,6 +104,7 @@ struct Local {
     float x{}, y{}, z{};
     uint64_t seen{};
     uint32_t entity{};
+    uint64_t account{}; // the server's account for it: beacons saved while the local player was unknown
 } g_local;
 
 struct Player {
@@ -153,6 +154,15 @@ uint32_t SenderEntity(uint64_t account) {
     for (int i = 0; s && account && i < 16; ++i) {
         auto* slot = s + 0x1e0 + i * 0x148;
         if (at<uint32_t>(slot, 0) && at<uint64_t>(slot, 0x48) == account) return at<uint32_t>(slot, 0x18);
+    }
+    return 0;
+}
+
+uint64_t SlotAccount(uint32_t id) {
+    auto* s = static_cast<uint8_t*>(g_server.load());
+    for (int i = 0; s && id && i < 16; ++i) {
+        auto* slot = s + 0x1e0 + i * 0x148;
+        if (at<uint32_t>(slot, 0) && at<uint32_t>(slot, 0x18) == id) return at<uint64_t>(slot, 0x48);
     }
     return 0;
 }
@@ -356,7 +366,9 @@ void WatchChests(void* ctx) {
             if (p.hall != h || p.finished || now - p.seen >= 3000) continue;
             p.finished = resetOn; // without the reset, beacons of a finished hall still unlock
             const uint64_t account = AccountOf(id);
-            const bool reset = resetOn && account && progress::ResetHall(account, h);
+            bool reset = resetOn && account && progress::ResetHall(account, h);
+            // The host's own beacons may sit under its account as well (see LocalMasks)
+            if (resetOn && account == progress::kLocalPlayer && g_local.account) reset = progress::ResetHall(g_local.account, h) || reset;
             char line[192];
             std::snprintf(line, sizeof(line), "Hollow Halls Progression: player %u finished the %s Hollow Halls (an end chest was looted)%s", id,
                           halls::kHalls[h].region, reset ? "; its Return Beacons are reset (ResetOnBossKill)" : "");
@@ -389,8 +401,10 @@ void Observe(uint32_t id, const void* position) {
         auto& p = g_players[id];
         p.x = x, p.y = y, p.z = z, p.seen = now;
         if (g_local.valid && now - g_local.seen < 1000 && std::fabs(g_local.x - x) < 1.5f && std::fabs(g_local.z - z) < 1.5f &&
-            std::fabs(g_local.y - y) < 3.0f)
+            std::fabs(g_local.y - y) < 3.0f) {
             g_local.entity = id;
+            if (const uint64_t account = SlotAccount(id)) g_local.account = account;
+        }
         Check(id, p, now);
         save = g_saveAfter && now >= g_saveAfter;
         if (save) g_saveAfter = 0;
@@ -669,13 +683,19 @@ int Chat(void* store, uint8_t type, uint64_t* text, uint32_t senderHandle, uint6
         return 1;
     }
     if (line == protocol::kQuery) {
-        auto masks = progress::Get(account);
+        // The host's own game asks this way while it is paused: answer with all of its beacons, as
+        // the local path does, or its list would shrink for a moment.
+        const uint64_t local = LocalAccount();
+        auto masks = local && account == local ? LocalMasks() : progress::Get(account);
         return protocol::FormatMasks(answer, capacity, masks) > 0 ? 1 : 2;
     }
     protocol::Travel travel{};
     if (protocol::ParseTravel(line, travel)) {
         protocol::Answer result = protocol::Answer::unavailable;
-        if (!progress::Has(account, travel.hall, travel.beacon)) {
+        const uint64_t local = LocalAccount();
+        const bool has = local && account == local ? (LocalMasks().hall[travel.hall] >> travel.beacon & 1) != 0
+                                                   : progress::Has(account, travel.hall, travel.beacon);
+        if (!has) {
             result = protocol::Answer::locked;
         } else if (uint32_t entity = SenderEntity(account)) {
             std::lock_guard guard(g_lock);
@@ -831,11 +851,25 @@ bool HostsWorld() {
 
 void OnAnswer(AnswerHandler handler) { g_answers = handler; }
 
-protocol::Masks LocalMasks() { return progress::Get(progress::kLocalPlayer); }
+uint64_t LocalAccount() {
+    std::lock_guard guard(g_lock);
+    return g_local.account;
+}
+
+// The host's own beacons: the local player's record, and the one under its account (saved while the
+// local player was not recognised, or answered by the chat path).
+protocol::Masks LocalMasks() {
+    auto masks = progress::Get(progress::kLocalPlayer);
+    if (const uint64_t account = LocalAccount()) {
+        const auto more = progress::Get(account);
+        for (int h = 0; h < halls::kHallCount; ++h) masks.hall[h] |= more.hall[h];
+    }
+    return masks;
+}
 
 protocol::Answer TravelLocal(int hall, int beacon) {
     if (hall < 0 || hall >= halls::kHallCount || beacon < 0 || beacon >= halls::kHalls[hall].count) return protocol::Answer::unavailable;
-    if (!progress::Has(progress::kLocalPlayer, hall, beacon)) return protocol::Answer::locked;
+    if (!(LocalMasks().hall[hall] >> beacon & 1)) return protocol::Answer::locked;
     std::lock_guard guard(g_lock);
     if (!g_local.entity || GetTickCount64() - g_local.seen > 3000) return protocol::Answer::unavailable;
     return Queue(g_local.entity, GetTickCount64(), hall, beacon);
