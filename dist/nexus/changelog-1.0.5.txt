@@ -1,0 +1,3 @@
+- Albaneve Summits: the Return Beacons are now numbered in the order you reach them, so the beacon by the entrance is 1. Your saved beacons are kept; only the numbers change. Servers and players can update at different times.
+- If the server part runs into a game state it doesn't expect, loader.log now says so instead of beacons quietly stopping.
+- Reported bugs fixed: Albaneve Summits beacons numbered out of order.

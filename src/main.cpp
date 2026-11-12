@@ -22,7 +22,7 @@ using namespace hhp;
 template <class T>
 T& at(void* p, size_t n) { return *reinterpret_cast<T*>(static_cast<uint8_t*>(p) + n); }
 
-constexpr const char* kVersion = "1.0.4";
+constexpr const char* kVersion = "1.0.5";
 // The game's "Return Beacon" (its name in the game's text tables).
 constexpr uint32_t kReturnBeaconLoca = 2316234444u;
 
@@ -180,10 +180,10 @@ void Accept(const protocol::Masks& now, Source source) {
             for (int b = 0; b < halls::kHalls[h].count; ++b) {
                 if (!(is >> b & 1) || (was >> b & 1)) continue;
                 char message[512];
-                sprintf_s(message, notice::Say(text::Reached), unsigned(b + 1), unsigned(halls::kHalls[h].count));
+                sprintf_s(message, notice::Say(text::Reached), unsigned(halls::ShownNumber(h, b)), unsigned(halls::kHalls[h].count));
                 notice::Show(notice::Say(text::Title), message, 7000);
                 char line[160];
-                sprintf_s(line, "Hollow Halls Progression: notice: Return Beacon %d of %d reached in hall %d", b + 1, int(halls::kHalls[h].count), h);
+                sprintf_s(line, "Hollow Halls Progression: notice: Return Beacon %d of %d reached in hall %d", halls::ShownNumber(h, b), int(halls::kHalls[h].count), h);
                 Log(line);
             }
         }
@@ -229,7 +229,7 @@ void BeginArrival(int hall, int beacon) {
     const auto& b = halls::kBeacons[halls::kHalls[hall].first + beacon];
     arrival = {GetTickCount64(), 0, 0, 0, false, b.x, b.y + 0.5f, b.z + 2.0f};
     char caption[256];
-    sprintf_s(caption, notice::Say(text::Travelling), unsigned(beacon + 1));
+    sprintf_s(caption, notice::Say(text::Travelling), unsigned(halls::ShownNumber(hall, beacon)));
     notice::ShowLoading(hall, caption);
     notice::SetLoadingProgress(0.08f);
 }
@@ -521,10 +521,12 @@ void AddBeacons(uint8_t* entries, void* marker) {
         if (beaconWord.empty() || beaconWord.size() > 96) beaconWord = notice::Say(text::ReturnBeacon);
         beaconWordLang = lang;
     }
-    for (int b = 0; b < halls::kHalls[hall].count; ++b) {
+    // In the order shown (the order you reach them), not the stored one
+    for (int shown = 1; shown <= halls::kHalls[hall].count; ++shown) {
+        const int b = halls::BeaconShownAs(hall, shown);
         if (!(mask >> b & 1) || at<uint8_t>(entries, 0x480) >= 16 || menuCount >= 16) continue;
         auto& label = labels[menuCount];
-        const int n = sprintf_s(label, "%s %d", beaconWord.c_str(), b + 1);
+        const int n = sprintf_s(label, "%s %d", beaconWord.c_str(), shown);
         if (n <= 0) continue;
         alignas(16) uint8_t entry[0x48]{};
         makeEntry(entry, 0x5b, 1);

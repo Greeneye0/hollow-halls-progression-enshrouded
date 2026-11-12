@@ -50,6 +50,12 @@ for enabled, scene, name, pos in pickle.load(open(PLACEMENTS, 'rb')):
     (beacons if name == 'Prop_OpenWorld_SavePoint' else chests)[h].append((pos, name.rsplit('_', 1)[1]))
 beacons = [[p for p, _ in b] for b in beacons]
 
+# The number each beacon is shown with, where the shortest straight-line route above (the stored order: saved
+# progress, the host's chat lines and the map link all use it, so it never changes) differs from the order you
+# reach them on foot. Per hall: the shown number of each stored beacon. Albaneve: the beacon at 914, 9152 is the
+# first you reach, then the one at 1010, 8964 (reported 2026-11-12). The map mod keeps a copy (halls.inl kShownNumber).
+SHOWN = {'Albaneve Summits': (3, 1, 2, 4, 5)}
+
 def dist(a, b):
     return math.sqrt(sum((x - y) ** 2 for x, y in zip(a, b)))
 
@@ -75,7 +81,7 @@ w('};')
 w('struct Box { float minX, minY, minZ, maxX, maxY, maxZ; uint8_t hall; };')
 w('')
 rows = []
-w('// Return Beacons (Prop_OpenWorld_SavePoint), ordered by distance from the hall\'s arrival point.')
+w('// Return Beacons (Prop_OpenWorld_SavePoint), in their stored order: the shortest straight-line route from the arrival (kShownNumber has the numbers shown).')
 w('constexpr Point kBeacons[] = {')
 first = []
 for h, (marker, region, ent, arrival, end) in enumerate(HALLS):
@@ -111,6 +117,25 @@ w('constexpr Box kBoxes[] = {')
 for v, h in boxes:
     w('    {%.1ff, %.1ff, %.1ff, %.1ff, %.1ff, %.1ff, %d}, // %s' % (*v, h, HALLS[h][1]))
 w('};')
+w('')
+w('// The number each beacon in kBeacons is shown with (notices, the travel buttons, the map), in the order you')
+w('// reach them on foot; kBeacons keeps the stored order.')
+w('constexpr uint8_t kShownNumber[] = {')
+for h, (marker, region, ent, arrival, end) in enumerate(HALLS):
+    n = first[h][1]
+    shown = SHOWN.get(region, tuple(range(1, n + 1)))
+    assert sorted(shown) == list(range(1, n + 1)), region
+    w('    %s, // %s' % (', '.join(str(x) for x in shown), region))
+w('};')
+w('static_assert(sizeof(kShownNumber) == sizeof(kBeacons) / sizeof(kBeacons[0]), "a shown number per beacon");')
+w('')
+w('// The stored beacon (0-based, in its hall) shown with this number (1-based).')
+w('constexpr int BeaconShownAs(int hall, int number) {')
+w('    for (int b = 0; b < int(kHalls[hall].count); ++b)')
+w('        if (kShownNumber[kHalls[hall].first + b] == number) return b;')
+w('    return number - 1;')
+w('}')
+w('constexpr int ShownNumber(int hall, int beacon) { return kShownNumber[kHalls[hall].first + beacon]; }')
 w('')
 w('}  // namespace hhp::halls')
 open(OUT, 'w', newline='\n').write('\n'.join(out) + '\n')

@@ -17,7 +17,7 @@ struct Hall {
 };
 struct Box { float minX, minY, minZ, maxX, maxY, maxZ; uint8_t hall; };
 
-// Return Beacons (Prop_OpenWorld_SavePoint), ordered by distance from the hall's arrival point.
+// Return Beacons (Prop_OpenWorld_SavePoint), in their stored order: the shortest straight-line route from the arrival (kShownNumber has the numbers shown).
 constexpr Point kBeacons[] = {
     {1369.50f, 282.50f, 8916.00f}, // Springlands 1: 27 m from the arrival, 990 m from the end
     {1198.50f, 244.00f, 8980.00f}, // Springlands 2: 212 m from the arrival, 819 m from the end
@@ -120,5 +120,25 @@ constexpr Box kBoxes[] = {
     {36.5f, 62.5f, 9700.5f, 436.5f, 342.5f, 10150.5f, 2}, // Nomad Highlands
     {422.5f, 62.5f, 9753.5f, 1422.5f, 342.5f, 10245.5f, 2}, // Nomad Highlands
 };
+
+// The number each beacon in kBeacons is shown with (notices, the travel buttons, the map), in the order you
+// reach them on foot; kBeacons keeps the stored order.
+constexpr uint8_t kShownNumber[] = {
+    1, 2, 3, 4, // Springlands
+    1, 2, 3, 4, 5, // Revelwood
+    1, 2, 3, 4, 5, // Nomad Highlands
+    1, 2, 3, 4, 5, // Veilwater Basin
+    3, 1, 2, 4, 5, // Albaneve Summits
+    1, 2, 3, 4, 5, 6, // Kindlewastes
+};
+static_assert(sizeof(kShownNumber) == sizeof(kBeacons) / sizeof(kBeacons[0]), "a shown number per beacon");
+
+// The stored beacon (0-based, in its hall) shown with this number (1-based).
+constexpr int BeaconShownAs(int hall, int number) {
+    for (int b = 0; b < int(kHalls[hall].count); ++b)
+        if (kShownNumber[kHalls[hall].first + b] == number) return b;
+    return number - 1;
+}
+constexpr int ShownNumber(int hall, int beacon) { return kShownNumber[kHalls[hall].first + beacon]; }
 
 }  // namespace hhp::halls

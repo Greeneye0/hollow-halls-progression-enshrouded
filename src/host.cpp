@@ -208,7 +208,7 @@ void Check(uint32_t id, Player& p, uint64_t now) {
         if (Distance(p.x, p.y, p.z, halls::kBeacons[h.first + b]) > kBeaconRange || !progress::Unlock(account, hall, b)) continue;
         char line[160];
         std::snprintf(line, sizeof(line), "Hollow Halls Progression: player %u reached Return Beacon %d of %d in the %s Hollow Halls", id,
-                      b + 1, int(h.count), h.region);
+                      halls::ShownNumber(hall, b), int(h.count), h.region);
         Log(line);
         g_saveAfter = now;
     }
@@ -496,7 +496,7 @@ protocol::Answer Queue(uint32_t entity, uint64_t nonce, int hall, int beacon) {
     if (result == protocol::Answer::queued) {
         char line[160];
         std::snprintf(line, sizeof(line), "Hollow Halls Progression: player %u travels to Return Beacon %d of the %s Hollow Halls", entity,
-                      beacon + 1, halls::kHalls[hall].region);
+                      halls::ShownNumber(hall, beacon), halls::kHalls[hall].region);
         Log(line);
     }
     return result;
@@ -536,8 +536,43 @@ void DevGoto() {
                   result == protocol::Answer::queued ? "queued" : "refused");
     Log(line);
 }
+
+// Development builds: greeneye\hollow-halls-progression\players.txt (any content) logs every player seen
+// in the last 3 s: position, hall, account, that hall's beacons and the finished flag; then it is deleted.
+std::wstring g_playersFile;
+uint64_t g_playersAt = 0;
+
+void DevPlayers(void* ctx) {
+    const uint64_t now = GetTickCount64();
+    if (g_playersFile.empty() || now < g_playersAt) return;
+    g_playersAt = now + 1000;
+    if (GetFileAttributesW(g_playersFile.c_str()) == INVALID_FILE_ATTRIBUTES) return;
+    DeleteFileW(g_playersFile.c_str());
+    char state[160];
+    std::snprintf(state, sizeof(state), "Hollow Halls Progression [dev]: hooks %s, %s, authority %d", g_faulted ? "faulted" : "fine",
+                  g_paused ? "paused" : "running", ctx ? int(Authority(ctx)) : -1);
+    Log(state);
+    std::lock_guard guard(g_lock);
+    int shown = 0;
+    for (uint32_t id = 1; id <= 16; ++id) {
+        const auto& p = g_players[id];
+        if (!p.seen || now - p.seen >= 3000) continue;
+        const uint64_t account = AccountOf(id);
+        const int hall = HallAt(p.x, p.y, p.z);
+        char line[256];
+        std::snprintf(line, sizeof(line),
+                      "Hollow Halls Progression [dev]: player %u at %.1f, %.1f, %.1f, hall %d (kept %d), account %llx, mask %u, finished %d, checked %llu ms ago",
+                      id, p.x, p.y, p.z, hall, p.hall, static_cast<unsigned long long>(account),
+                      hall >= 0 && account ? unsigned(progress::Get(account).hall[hall]) : 0u, int(p.finished),
+                      static_cast<unsigned long long>(now - p.checked));
+        Log(line);
+        ++shown;
+    }
+    if (!shown) Log("Hollow Halls Progression [dev]: no players seen in the last 3 s");
+}
 #else
 void DevGoto() {}
+void DevPlayers(void*) {}
 #endif
 
 // The player system, per player: a waiting request queues the game's Teleport component, the same one
@@ -729,22 +764,31 @@ uint8_t* AppendHook(uint8_t* result, void* store, uint8_t type, uint64_t* text, 
     }
     return g_append(result, store, type, text, a, b, c, account, time);
 }
+// A fault in the game's data turns the host part off for this session; said once, with where.
+void Faulted(const char* where) {
+    if (!g_faulted.exchange(true)) {
+        char line[160];
+        std::snprintf(line, sizeof(line), "Hollow Halls Progression: a fault in %s; beacons and travel are off until the next start", where);
+        Log(line);
+    }
+}
 
 void SafeObserve(void* c) {
-    __try { ObserveWorld(c); } __except (EXCEPTION_EXECUTE_HANDLER) { g_faulted = true; }
+    __try { ObserveWorld(c); } __except (EXCEPTION_EXECUTE_HANDLER) { Faulted("watching the world"); }
 }
 void SafePlayer(void* c) {
-    __try { PlayerTick(c); } __except (EXCEPTION_EXECUTE_HANDLER) { g_faulted = true; }
+    __try { PlayerTick(c); } __except (EXCEPTION_EXECUTE_HANDLER) { Faulted("the player tick"); }
 }
 bool SafeApply(void* c, void* d) {
-    __try { return ApplyTick(c, d); } __except (EXCEPTION_EXECUTE_HANDLER) { g_faulted = true; return true; }
+    __try { return ApplyTick(c, d); } __except (EXCEPTION_EXECUTE_HANDLER) { Faulted("applying a journey"); return true; }
 }
 void SafeFinish() {
-    __try { FinishApplication(); } __except (EXCEPTION_EXECUTE_HANDLER) { g_faulted = true; }
+    __try { FinishApplication(); } __except (EXCEPTION_EXECUTE_HANDLER) { Faulted("finishing a journey"); }
 }
 
 bool PlayerFirst(void* c, void* d, size_t n) {
     greeneye::Lease lease;
+    if (lease) DevPlayers(c);
     if (lease && !g_faulted && !g_paused) SafeObserve(c);
     const bool ok = g_playerFirst(c, d, n);
     if (lease && ok && !g_faulted && !g_paused) {
@@ -821,6 +865,7 @@ bool Init(const GreeneyeHost* host) {
     g_append = reinterpret_cast<AppendFn>(host->hook(chat, reinterpret_cast<void*>(AppendHook), 13, nullptr, 0));
 #ifdef HHP_DEV
     g_gotoFile = std::wstring(host->modDir) + L"goto.txt";
+    g_playersFile = std::wstring(host->modDir) + L"players.txt";
 #endif
     const bool ok = g_playerFirst && g_playerMore && g_applyFirst && g_applyMore && g_receive && g_append;
     if (!ok) Log("Hollow Halls Progression: host hooks could not be installed");
